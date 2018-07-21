@@ -3,9 +3,49 @@ This module contains curses implementation
 """
 import asyncio
 import curses
+import functools
 import contextlib
 
-from enum import IntEnum
+from enum import Enum, IntEnum
+
+
+class ColorPair(IntEnum):
+    WHITE = 1
+    BLACK = 2
+    GREEN = 3
+    RED = 4
+    BLUE = 5
+    ORANGE = 6
+
+
+class _Colors:
+    # We use 0-255 range to calculate rgb values
+    _COLOR_MAPPING = {
+        ColorPair.WHITE: (232, 232, 232),
+        ColorPair.BLACK: (33, 33, 33),
+        ColorPair.RED: (244, 67, 54),
+        ColorPair.GREEN: (129, 199, 132),
+        ColorPair.BLUE: (66, 165, 245),
+        ColorPair.ORANGE: (255, 167, 38),
+    }
+
+    def __iter__(cls):
+        return iter(cls._COLOR_MAPPING.items())
+
+    def __getattr__(cls, attr):
+        try:
+            return cls._COLOR_MAPPING[attr]
+        except KeyError:
+            return super().__getattribute__(attr)
+
+
+Colors = _Colors()
+
+
+def init_colors():
+    for num, rgb in Colors:
+        curses.init_color(num, *(int(1000 * (i / 255)) for i in rgb))
+        curses.init_pair(num, num, -1)
 
 
 @contextlib.contextmanager
@@ -23,7 +63,7 @@ def ncurses():
         # Don't draw cursor
         curses.curs_set(False)
 
-        yield
+        yield stdscr
     finally:
         curses.echo()
         curses.endwin()
@@ -31,34 +71,17 @@ def ncurses():
 
 def refresh_bar(method):
     """
+    Refresh Decorator
+
     Forces redraw on screen with objects having a bar
     """
 
     @functools.wraps(method)
     def wrapper(inst, *args, **kw):
         method(inst, *args, **kw)
-        inst._refresh()
+        inst._bar.refresh()
 
     return wrapper
-
-
-class Colors(IntEnum):
-    GREEN = 10
-    RED = 20
-    ORANGE = 30
-
-
-class TitleBar:
-    def __init__(x, y):
-        pass
-
-
-class ProgressBar:
-    def __init__(x, y):
-        pass
-
-    def update(self, value):
-        pass
 
 
 class BaseBar:
@@ -89,11 +112,33 @@ class BaseBar:
         return self._bar
 
     @refresh_bar
-    def write(self, msg, x=0):
-        self._bar.addstr(0, x, msg)
+    def write(self, msg, x=0, color=None):
+        self._bar.addstr(0, x, msg, curses.color_pair(color
+                                                      or ColorPair.WHITE))
 
     def clear(self):
         self._bar.erase()
+
+
+class TaskStatus(IntEnum):
+    IDLE = 1
+    RUNNING = 2
+    DONE = 3
+    SUCCESSFULE = 4
+    FAILED = -1
+
+
+def set_status(status):
+    def _set_status(method):
+        @functools.wraps(method)
+        def wrapper(self, *args, **kw):
+
+            self._status = status
+            return method(self, *args, **kw)
+
+        return wrapper
+
+    return _set_status
 
 
 class StatusBar(BaseBar):
@@ -105,18 +150,20 @@ class StatusBar(BaseBar):
         super().__init__(x, y, width)
         self._status = None
 
-    @property
     def status(self):
         return self._status
 
+    @set_status(TaskStatus.IDLE)
     def waiting(self):
-        pass
+        self.write('*', color=ColorPair.WHITE)
 
-    def working(self):
-        pass
+    @set_status(TaskStatus.RUNNING)
+    def executing(self):
+        self.write('>', color=ColorPair.BLUE)
 
+    @set_status(TaskStatus.DONE)
     def done(self):
-        pass
+        self.write('-', color=ColorPair.ORANGE)
 
 
 class LoaderBar(BaseBar):
@@ -127,13 +174,13 @@ class LoaderBar(BaseBar):
     def __init__(self, x, y, width=6, sym='>'):
         super().__init__(x, y, width)
 
-        self._loader = ['  {}', ' {} ', '{}  ']
+        self._loader = ['{}  ', ' {} ', '  {}']
 
     def idle(self):
         self.write(' - ')
 
     def update(self):
-        res = self._loader.pop()
+        res = self._loader.pop(0)
         self._write(res)
         self._loader.append(res)
 
@@ -152,52 +199,44 @@ class LoaderBar(BaseBar):
         return future.result()
 
 
-class TaskBar(BaseBar):
+class TaskBar:
     """
     Task Bar Format:
 
-        [Status][Name][Loader][Message]
+        {Status}{Name}{Loader}{Message}
 
     """
 
-    def __init__(self, name, x, y, margin=12):
-        super().__init__(x, y, margin)
+    def __init__(self, name, x, y, initial_message=''):
 
-        self._ = name
-        self._x = x
-        self._y = y
-        self._margin = margin
+        # Setup Task Modules
+        _status = StatusBar(x, y)
+        _namebar = BaseBar(_status.width + _status.x, y, 12)
 
-        # Static
-        _static = curses.newwin(1, margin, y, x)
-        curses.init_pair(156 + 1, 156, -1)
-        _static.addstr(0, 0, name, curses.color_pair(157))
-        _static.addstr(0, margin - 2, '|')
-        _static.refresh()
+        _loader = LoaderBar(_namebar.width + _namebar.x, y)
+        _loader.idle()
 
-        # Loader
-        loader_margin = (x + margin)
-        loader_width = 6
-        _loader = curses.newwin(1, loader_width, y, loader_margin)
-
-        # Status
-        status_margin = (loader_margin + loader_width)
-        status_width = 60
-        _status = curses.newwin(1, 0, y, status_margin)
-        _status.addstr(0, 0, '| Status')
-        _status.addstr(0, status_width - 2, ']')
-        _status.refresh()
+        _message = BaseBar(_loader.x + _loader.width, y, 60)
+        _message.write(initial_message)
 
         # Assign
-        self._static = _static
-        self._loader = _loader
+        self._name = name
+        self._namebar = _namebar
         self._status = _status
+        self._loader = _loader
+        self._message = _message
 
-        self.set_loader_idle()
+        # Initial Status
+        self.waiting()
 
-    @property
-    def name(self):
-        return self._name
+    def waiting(self):
+        self._status.waiting()
+        self._namebar.write(self._name, color=ColorPair.GREEN)
+
+    def finish(self, msg, installed=True):
+        color = ColorPair.GREEN if installed else ColorPair.RED
+        self._status.done(color=color)
+        self._namebar.write(self._name, color=color)
 
     @property
     def height(self):
@@ -208,9 +247,17 @@ class TaskBar(BaseBar):
         return self._x
 
     @property
+    def name(self):
+        return self._namebar
+
+    @property
     def loader(self):
         return self._loader
 
     @property
     def status(self):
         return self._status
+
+    @property
+    def message(self):
+        return self._message
