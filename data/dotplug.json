@@ -1,0 +1,38 @@
+[
+  {
+    "name": "nvim",
+    "version": "0.3.1",
+    "repo": "https://github.com/neovim/neovim/releases/download/v{version}/nvim.{type}",
+    "type": "appimage",
+    "build": "appimage",
+    "link": {
+      "dest": "XDG_BIN_HOME",
+      "targets": ["nvim"]
+    }
+  },
+  {
+    "name": "go",
+    "version": "1.10.3",
+    "repo": "https://dl.google.com/go/go{version}.linux-amd64.{type}",
+    "type": "tar.gz",
+    "build": "binary",
+    "link": {
+      "dest": "XDG_BIN_HOME",
+      "targets": ["go", "godoc", "gofmt"]
+    }
+  },
+  {
+    "name": "git",
+    "version": "2.18.0",
+    "repo": "https://github.com/git/git/archive/v{version}.{type}",
+    "type": "tar.gz",
+    "build": "source",
+    "cmds": [
+      "make configure && ./configure --prefix={.dest} && make && make install"
+    ],
+    "link": {
+      "dest": "XDG_BIN_HOME",
+     "targets": ["git"]
+    }
+  }
+]
