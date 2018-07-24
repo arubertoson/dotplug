@@ -82,6 +82,11 @@ class BaseApp:
             dest = os.environ[DEFAULT_USER_BIN]
 
         try:
+            src = src.format(self)
+        except KeyError:
+            pass
+
+        try:
             src = src.format(**os.environ)
         except KeyError:
             pass
