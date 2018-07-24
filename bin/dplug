@@ -1,0 +1,11 @@
+#!/usr/bin/env python3
+
+import asyncio
+
+from dotplug.main import main
+from dotplug.console import ncurses
+
+if __name__ == '__main__':
+    with ncurses() as screen:
+        asyncio.run(main())
+        input("")

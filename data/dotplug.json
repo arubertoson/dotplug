@@ -1,0 +1,76 @@
+[
+  {
+    "name": "nvim",
+    "version": "0.3.1",
+    "repo": "https://github.com/neovim/neovim/releases/download/v{version}/nvim.{type}",
+    "type": "appimage",
+    "build": "appimage",
+    "link": {
+      "src": "{.dest}",
+      "targets": ["nvim"]
+    }
+  },
+  {
+    "name": "go",
+    "version": "1.10.3",
+    "repo": "https://dl.google.com/go/go{version}.linux-amd64.{type}",
+    "type": "tar.gz",
+    "build": "binary",
+    "link": {
+      "src": "{.dest}/bin",
+      "targets": ["go", "godoc", "gofmt"]
+    }
+  },
+  {
+    "name": "ghq",
+    "depend": ["go"],
+    "version": "0.8.0",
+    "build": "command",
+    "not_dest": true,
+    "cmds": [
+      "go get github.com/motemen/ghq"
+    ],
+    "link": {
+      "src": "{GOBIN}",
+      "targets": ["ghq"]
+    }
+  },
+  {
+    "name": "git",
+    "version": "2.18.0",
+    "repo": "https://github.com/git/git/archive/v{version}.{type}",
+    "type": "tar.gz",
+    "build": "source",
+    "cmds": [
+      "make configure && ./configure --prefix={.dest} && make && make install"
+    ],
+    "link": {
+      "src": "{.dest}/bin",
+      "targets": ["git"]
+    }
+  },
+  {
+    "name": "nodejs",
+    "version": "8.11.3",
+    "repo": "https://nodejs.org/dist/v{version}/node-v{version}-linux-x64.{type}",
+    "type": "tar.xz",
+    "build": "binary",
+    "link": {
+      "src": "{.dest}/bin",
+      "targets": ["node"]
+    }
+  },
+  {
+    "name": "yarn",
+    "depend": ["nodejs"],
+    "version": "1.7.0",
+    "repo": "https://yarnpkg.com/downloads/{version}/yarn-v{version}.{type}",
+    "type": "tar.gz",
+    "build": "binary",
+    "link": {
+      "src": "{.dest}/bin",
+      "targets": ["yarn"]
+    }
+  }
+]
+ 
