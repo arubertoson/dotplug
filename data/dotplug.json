@@ -48,5 +48,29 @@
       "src": "{.dest}/bin",
       "targets": ["git"]
     }
+  },
+  {
+    "name": "nodejs",
+    "version": "8.11.3",
+    "repo": "https://nodejs.org/dist/v{version}/node-v{version}-linux-x64.{type}",
+    "type": "tar.xz",
+    "build": "binary",
+    "link": {
+      "src": "{.dest}/bin",
+      "targets": ["node"]
+    }
+  },
+  {
+    "name": "yarn",
+    "depend": ["nodejs"],
+    "version": "1.7.0",
+    "repo": "https://yarnpkg.com/downloads/{version}/yarn-v{version}.{type}",
+    "type": "tar.gz",
+    "build": "binary",
+    "link": {
+      "src": "{.dest}/bin",
+      "targets": ["yarn"]
+    }
   }
 ]
+ 
