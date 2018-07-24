@@ -3,59 +3,55 @@ This module contains the Application containers
 """
 import os
 import json
-import tempfile
 import shutil
 import asyncio
 
-from dataclasses import dataclass, field
-
-from dotplug.console import TaskBar
 from dotplug.archive import untar
 
 ARCHIVE_DIRECTORY = os.environ['_BASE_ARCHIVES']
 INSTALL_LOCATION = os.environ['_BASE_OPT']
+DEFAULT_USER_BIN = 'XDG_BIN_HOME'
 
 
-@dataclass
-class Links:
-    dest: str
-    targets: list
-
-    def __post_init__(self):
-        dest = self.dest
-        if dest in os.environ:
-            self.dest = os.environ[dest]
-
-    def make_from(self, srcdir):
-        dest = self.dest
-
-        for target in self.targets:
-            trgt = os.path.join(srcdir, target)
-            src = os.path.join(dest, target)
-
-            # Remove already existing links
-            try:
-                os.remove(src)
-            except FileNotFoundError:
-                pass
-
-            os.symlink(trgt, src)
-
-
-@dataclass
 class BaseApp:
-    name: str
-    version: str
-    type: str
-    build: str
-    link: Links
-    repo: str
-    force: bool = False
-    bar: TaskBar = None
+    def __init__(
+            self,
+            name,
+            version,
+            build,
+            type=None,
+            repo=None,
+            link=None,
+            depend=None,
+            bar=None,
+            force=False,
+            not_dest=False,
+    ):
 
-    def __post_init__(self):
-        if not isinstance(self.link, Links):
-            self.link = Links(**self.link)
+        self.name = name
+        self.version = version
+        self.type = type
+        self.build = build
+        self.repo = repo
+        self.force = force
+        self.bar = bar
+
+        self.not_dest = not_dest
+        self.link = link
+
+        depend = depend or set()
+        if not isinstance(depend, set):
+            depend = set(depend)
+        self.depend = depend
+
+    def __hash__(self):
+        return hash(self.name)
+
+    def __str__(self):
+        return str(self.name)
+
+    def __repr__(self):
+        return str(self)
 
     @property
     def url(self):
@@ -77,22 +73,39 @@ class BaseApp:
             self.version,
         )
 
-    def make_links(self):
-        self.link.make_from(self.dest)
+    async def make_links(self):
+        src = self.link.get('src')
+        targets = self.link.get('targets')
+        dest = self.link.get('dest', None)
+
+        if dest is None:
+            dest = os.environ[DEFAULT_USER_BIN]
+
+        try:
+            src = src.format(**os.environ)
+        except KeyError:
+            pass
+
+        for target in targets:
+            trgt = os.path.join(src, target)
+            src = os.path.join(dest, target)
+
+            # Remove already existing links
+            try:
+                os.remove(src)
+            except FileNotFoundError:
+                pass
+
+            os.symlink(trgt, src)
 
 
-@dataclass
 class AppImage(BaseApp):
     def install(self):
         app = os.path.join(self.dest, self.name)
         shutil.copyfile(self.archive, app)
         os.chmod(app, 0o755)
 
-    def mklinks(self):
-        self.link.make_from(self.dest)
 
-
-@dataclass
 class AppBinary(BaseApp):
     """
     Binarys usually comes as a package that we need to unpack to a location.
@@ -101,17 +114,30 @@ class AppBinary(BaseApp):
     def install(self):
         untar(self.archive, self.dest)
 
-    def mklinks(self):
-        self.link.make_from(os.path.join(self.dest, 'bin'))
+
+class AppCommand(BaseApp):
+    def __init__(self, cmds, *args, **kw):
+        super().__init__(*args, **kw)
+        self.cmds = cmds
+
+    async def command(self):
+        for cmd in self.cmds:
+            proc = await asyncio.create_subprocess_shell(
+                cmd.format(self),
+                shell=True,
+                stdout=asyncio.subprocess.DEVNULL,
+                stderr=asyncio.subprocess.DEVNULL,
+            )
+            stdout, stderr = await proc.communicate()
+
+    async def install(self):
+        await self.command()
 
 
-@dataclass
-class AppSource(BaseApp):
+class AppSource(AppCommand):
     """
     Sources we have to build ourselves with provided build flags.
     """
-
-    cmds: list = field(default_factory=list)
 
     async def install(self):
         # with tempfile.TemporaryDirectory() as tmp:
@@ -122,17 +148,7 @@ class AppSource(BaseApp):
         untar(self.archive, tmp)
         os.chdir(tmp)
 
-        for cmd in self.cmds:
-            proc = await asyncio.create_subprocess_shell(
-                cmd.format(self),
-                shell=True,
-                stdout=asyncio.subprocess.DEVNULL,
-                stderr=asyncio.subprocess.DEVNULL,
-            )
-            stdout, stderr = await proc.communicate()
-
-    def mklinks(self):
-        self.link.make_from(os.path.join(self.dest, 'bin'))
+        await self.command()
 
 
 def mkapp(data):
@@ -143,6 +159,7 @@ def mkapp(data):
         'appimage': AppImage,
         'binary': AppBinary,
         'source': AppSource,
+        'command': AppCommand,
     }[data['build']]
     return cls(**data)
 

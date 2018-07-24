@@ -7,6 +7,7 @@ import os
 import json
 import shutil
 import asyncio
+from collections import defaultdict
 
 from importlib import resources
 
@@ -41,17 +42,23 @@ async def install(task):
     """
     Perform all steps necessary for app installation
     """
+
     with run(task.bar) as bar:
-        state = await ensure_dest(task)
+        if not task.not_dest:
+            state = await ensure_dest(task)
+        else:
+            state = TaskStatus.NOT_INSTALLED
 
         if not state == TaskStatus.ALREADY_INSTALLED:
-            await ensure_archive(task)
+            if task.type is not None:
+                await ensure_archive(task)
 
             bar.message.write("Installing ...")
             await bar.loader.wait_for(task.install)
 
             bar.message.write("Creating Symlinks ...")
-            await bar.loader.wait_for(task.mklinks)
+            if task.link is not None:
+                await bar.loader.wait_for(task.make_links())
 
             bar.message.clear()
             bar.message.write("Done")
@@ -60,28 +67,50 @@ async def install(task):
         bar.set_state(TaskStatus.SUCCESSFUL)
 
 
-def producer():
+async def _install_block(block):
+    for app in block:
+        await asyncio.create_task(install(app))
+
+
+async def producer(q):
     """
     Producer creates our worker tasks
     """
-
     # XXX:
     # Temporary solution, there will be an rc file to contain information
     # regariding installation location.
     config = 'dotplug.json'
     with resources.open_text('data', f'{config}') as f:
-        apps = json.loads(f.read())
+        apps = {}
+        for idx, each in enumerate(json.loads(f.read())):
+            app = mkapp(each)
+            app.bar = TaskBar(app.name, CONSOLE_MARGIN, idx + CONSOLE_MARGIN)
+            apps[app.name] = app
 
-    # XXX:
-    # The queue system needs some more research, I really want to make it work
-    tasks = []
-    for idx, app in enumerate(apps):
-        app = mkapp(app)
-        app.bar = TaskBar(app.name, CONSOLE_MARGIN, idx + CONSOLE_MARGIN)
+    # Create install blocks of dependencies
+    copy = apps.copy()
+    depends = defaultdict(list)
 
-        # await q.put(install(app))
-        tasks.append(install(app))
-    return tasks
+    for name, node in copy.items():
+        if not node.depend:
+            depends[name].append(node)
+            apps.pop(name)
+
+    for name, node in apps.items():
+        for dep in node.depend:
+            if node not in depends[dep]:
+                depends[dep].append(node)
+
+    for block in depends.values():
+        await q.put(_install_block(block))
+
+
+async def consumer(q):
+    while not q.empty():
+        item = q.get_nowait()
+        await asyncio.sleep(1)
+        await item
+        q.task_done()
 
 
 async def main():
@@ -89,15 +118,16 @@ async def main():
     # argsparser to query necessary inputs, should be able to create a task
     # from the argsparser options and pass it along. Should only handle one
     # task or a config file of tasks.
-    # q = asyncio.Queue(maxsize=MAX_QUEUE_SIZE)
+    q = asyncio.Queue(maxsize=MAX_QUEUE_SIZE)
 
-    tasks = producer()
-    return await asyncio.gather(*tasks)
-    # return await asyncio.gather(producer(q), consume(q))
-    # await asyncio.gather(consume(q), producer(q))
+    p = producer(q)
+    c = [consumer(q) for x in range(MAX_QUEUE_SIZE)]
+
+    return await asyncio.gather(p, *c)
 
 
 if __name__ == '__main__':
+    # producer()
     with ncurses() as screen:
         asyncio.run(main())
         input("")
