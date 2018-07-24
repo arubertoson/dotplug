@@ -6,7 +6,7 @@
     "type": "appimage",
     "build": "appimage",
     "link": {
-      "dest": "XDG_BIN_HOME",
+      "src": "{.dest}",
       "targets": ["nvim"]
     }
   },
@@ -17,8 +17,22 @@
     "type": "tar.gz",
     "build": "binary",
     "link": {
-      "dest": "XDG_BIN_HOME",
+      "src": "{.dest}/bin",
       "targets": ["go", "godoc", "gofmt"]
+    }
+  },
+  {
+    "name": "ghq",
+    "depend": ["go"],
+    "version": "0.8.0",
+    "build": "command",
+    "not_dest": true,
+    "cmds": [
+      "go get github.com/motemen/ghq"
+    ],
+    "link": {
+      "src": "{GOBIN}",
+      "targets": ["ghq"]
     }
   },
   {
@@ -31,8 +45,8 @@
       "make configure && ./configure --prefix={.dest} && make && make install"
     ],
     "link": {
-      "dest": "XDG_BIN_HOME",
-     "targets": ["git"]
+      "src": "{.dest}/bin",
+      "targets": ["git"]
     }
   }
 ]
