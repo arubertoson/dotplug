@@ -2,12 +2,14 @@
 This module contains the Application containers
 """
 import os
-import json
 import shutil
 import asyncio
 
-from dotplug.archive import untar
+from dotplug.archive import untar, unzip
 
+# XXX:
+# Better handling of global variables, as it stands this will raise a keyerror
+# if not set - which is not ideal
 ARCHIVE_DIRECTORY = os.environ['_BASE_ARCHIVES']
 INSTALL_LOCATION = os.environ['_BASE_OPT']
 DEFAULT_USER_BIN = 'XDG_BIN_HOME'
@@ -95,6 +97,9 @@ class BaseApp:
             trgt = os.path.join(src, target)
             src = os.path.join(dest, target)
 
+            if not os.path.exists(trgt):
+                continue
+
             # Remove already existing links
             try:
                 os.remove(src)
@@ -104,6 +109,11 @@ class BaseApp:
             os.symlink(trgt, src)
 
 
+# XXX:
+# Installing needs to have proper exitcodes we can handle, currently if an
+# install failes nothing happends and the program trots along happily
+
+
 class AppImage(BaseApp):
     def install(self):
         app = os.path.join(self.dest, self.name)
@@ -111,32 +121,54 @@ class AppImage(BaseApp):
         os.chmod(app, 0o755)
 
 
-class AppBinary(BaseApp):
-    """
-    Binarys usually comes as a package that we need to unpack to a location.
-    """
-
-    def install(self):
-        untar(self.archive, self.dest)
-
-
 class AppCommand(BaseApp):
-    def __init__(self, cmds, *args, **kw):
+    def __init__(self, *args, cmds=None, **kw):
         super().__init__(*args, **kw)
         self.cmds = cmds
 
     async def command(self):
+        clear = self.bar.message.clear
+        write = self.bar.message.write
         for cmd in self.cmds:
+            command = cmd.format(self)
+
+            # XXX:
+            # Really need a better way to handle messages
+            clear()
+            write(command)
+
             proc = await asyncio.create_subprocess_shell(
-                cmd.format(self),
-                shell=True,
+                command,
                 stdout=asyncio.subprocess.DEVNULL,
                 stderr=asyncio.subprocess.DEVNULL,
             )
             stdout, stderr = await proc.communicate()
+            # XXX:
+            # If build fail we need to communicate that
+            # if not proc.returncode == 0:
+            #     #     # self.bar.message.write(stderr)
+            #     print(stderr)
+            #     await asyncio.sleep(2)
 
     async def install(self):
         await self.command()
+
+
+class AppBinary(AppCommand):
+    """
+    Binarys usually comes as a package that we need to unpack to a location.
+    """
+
+    async def install(self):
+        untar(self.archive, self.dest)
+        if self.cmds:
+            # Some commands are run from the destination folder whereas some
+            # other commands are just standalone commands
+            try:
+                os.chdir(self.dest)
+            except FileNotFoundError:
+                pass
+            await self.command()
 
 
 class AppSource(AppCommand):
@@ -145,18 +177,27 @@ class AppSource(AppCommand):
     """
 
     async def install(self):
-        # with tempfile.TemporaryDirectory() as tmp:
+        # XXX:
+        # need proper cleanup after build and install is complete
         tmp = f'/tmp/dotplug/{self.name}'
         if os.path.exists(tmp):
             shutil.rmtree(tmp)
 
-        untar(self.archive, tmp)
+        # XXX:
+        # Need a better way to handle types
+        func = {
+            'tar.gz': untar,
+            'tar.xz': untar,
+            'zip': unzip,
+        }[self.type]
+
+        func(self.archive, tmp)
         os.chdir(tmp)
 
         await self.command()
 
 
-def mkapp(data):
+def mktask(data):
     """
     App Factory
     """
@@ -167,20 +208,3 @@ def mkapp(data):
         'command': AppCommand,
     }[data['build']]
     return cls(**data)
-
-
-if __name__ == '__main__':
-    from importlib import resources
-    with resources.open_text('data', 'dotplug.json') as f:
-        tasks = json.loads(f.read())
-
-    print(dir(AppSource.install))
-    # for each in tasks:
-
-    # print(dir(each.install))
-    # task = BaseApp(**each)
-    # print(task.url)
-    # print(task.dest)
-    # print(task.archive)
-
-    # task.make_links()

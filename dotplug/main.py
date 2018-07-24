@@ -7,13 +7,13 @@ import os
 import json
 import shutil
 import asyncio
-from collections import defaultdict
 
 from importlib import resources
 
-from dotplug.tasks import mkapp
+from dotplug.tasks import mktask
+# XXX: Utils
 from dotplug.archive import ensure_archive
-from dotplug.console import ncurses, run, TaskBar, TaskStatus
+from dotplug.console import run, TaskBar, TaskStatus
 
 MAX_QUEUE_SIZE = 6
 CONSOLE_MARGIN = 4
@@ -38,6 +38,11 @@ async def ensure_dest(task):
     return TaskStatus.NOT_INSTALLED
 
 
+# XXX:
+# Move all functionality not related to running the actual process to other
+# modules, this module should be dedicated to the producer consumer pattern
+
+
 async def install(task):
     """
     Perform all steps necessary for app installation
@@ -54,11 +59,13 @@ async def install(task):
                 await ensure_archive(task)
 
             bar.message.write("Installing ...")
+            await asyncio.sleep(2)
             await bar.loader.wait_for(task.install)
 
             bar.message.write("Creating Symlinks ...")
+            await asyncio.sleep(2)
             if task.link is not None:
-                await bar.loader.wait_for(task.make_links())
+                result = await bar.loader.wait_for(task.make_links())
 
             bar.message.clear()
             bar.message.write("Done")
@@ -67,67 +74,61 @@ async def install(task):
         bar.set_state(TaskStatus.SUCCESSFUL)
 
 
-async def _install_block(block):
-    for app in block:
-        await asyncio.create_task(install(app))
-
-
 async def producer(q):
     """
     Producer creates our worker tasks
     """
     # XXX:
-    # Temporary solution, there will be an rc file to contain information
-    # regariding installation location.
+    # Hard coded for now, will be able to specify config setting in an rc file
+    # located in the XDG_CONFIG_HOME directory
+    #
+    # * archive location
+    # * install root location
+    # * max threads
+    # * config file location (unless given an absolute path will look here)
+    #
     config = 'dotplug.json'
     with resources.open_text('data', f'{config}') as f:
-        apps = {}
-        for idx, each in enumerate(json.loads(f.read())):
-            app = mkapp(each)
-            app.bar = TaskBar(app.name, CONSOLE_MARGIN, idx + CONSOLE_MARGIN)
-            apps[app.name] = app
-
-    # Create install blocks of dependencies
-    copy = apps.copy()
-    depends = defaultdict(list)
-
-    for name, node in copy.items():
-        if not node.depend:
-            depends[name].append(node)
-            apps.pop(name)
-
-    for name, node in apps.items():
-        for dep in node.depend:
-            if node not in depends[dep]:
-                depends[dep].append(node)
-
-    for block in depends.values():
-        await q.put(_install_block(block))
+        data = json.loads(f.read())
+        for idx, each in enumerate(data):
+            task = mktask(each)
+            # Each task get assigned a task that it'll own.
+            task.bar = TaskBar(task.name, CONSOLE_MARGIN, idx + CONSOLE_MARGIN)
+            await q.put(task)
 
 
-async def consumer(q):
+async def consumer(q, seen):
+    """
+    Consume tasks in the queue until the queue is empty
+
+    If the task grabbed from the queue still has unfinised dependencies put
+    the task at the back of the queue, rinse and repeat until evrything is
+    done.
+    """
     while not q.empty():
-        item = q.get_nowait()
-        await asyncio.sleep(1)
-        await item
+        task = await q.get()
+
+        # If task depends on other tasks we make sure that the task is only
+        # operated on if all dependensies have been completed. Otherwise it
+        # goes back into the products
+        if task.depend and not all(d in seen for d in task.depend):
+            # Put a little delay here to not hit the CPU to hard
+            await asyncio.sleep(0.5)
+            await q.put(task)
+        else:
+            await asyncio.create_task(install(task))
+            seen.add(task.name)
+
         q.task_done()
 
 
 async def main():
-    # XXX:
-    # argsparser to query necessary inputs, should be able to create a task
-    # from the argsparser options and pass it along. Should only handle one
-    # task or a config file of tasks.
+    # Assign a queue with a set size
     q = asyncio.Queue(maxsize=MAX_QUEUE_SIZE)
 
+    seen = set()
+
     p = producer(q)
-    c = [consumer(q) for x in range(MAX_QUEUE_SIZE)]
+    c = [consumer(q, seen) for x in range(MAX_QUEUE_SIZE)]
 
     return await asyncio.gather(p, *c)
-
-
-if __name__ == '__main__':
-    # producer()
-    with ncurses() as screen:
-        asyncio.run(main())
-        input("")

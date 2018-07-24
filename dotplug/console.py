@@ -182,7 +182,7 @@ class StatusBar(BaseBar):
 
     @set_status(TaskStatus.RUNNING)
     def running(self):
-        self.write('-', color=ColorPair.ORANGE)
+        self.write('+', color=ColorPair.ORANGE)
 
     @set_status(TaskStatus.DONE)
     def done(self, color=ColorPair.ORANGE):
@@ -201,7 +201,8 @@ class LoaderBar(BaseBar):
         self._sym = sym
 
     def idle(self):
-        self.write(' - ')
+        self.clear()
+        self.write('-')
 
     def update(self):
         res = self._loader.pop(0)
