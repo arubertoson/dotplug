@@ -71,6 +71,37 @@
       "src": "{.dest}/bin",
       "targets": ["yarn"]
     }
+  },
+  {
+    "name": "fzf",
+    "version": "0.17.4",
+    "repo": "https://github.com/junegunn/fzf/archive/{version}.{type}",
+    "type": "tar.gz",
+    "build": "binary",
+    "cmds": [
+      "./install --bin --64"
+    ],
+    "link": {
+      "src": "{.dest}/bin",
+      "targets": ["fzf"]
+    }
+  },
+  {
+    "name": "ctags",
+    "version": "0.1.0",
+    "repo": "https://github.com/universal-ctags/ctags/archive/master.zip",
+    "type": "zip",
+    "build": "source",
+    "cmds": [
+      "./autogen.sh",
+      "./configure --prefix={.dest}",
+      "make && make install"
+    ],
+    "link": {
+      "src": "{.dest}/bin",
+      "targets": ["ctags"]
+    }
   }
 ]
+ 
  
