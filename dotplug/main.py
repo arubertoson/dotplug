@@ -7,8 +7,9 @@ import os
 import json
 import shutil
 import asyncio
-
 from importlib import resources
+
+import uvloop
 
 from dotplug.tasks import mktask
 # XXX: Utils
@@ -17,6 +18,8 @@ from dotplug.console import run, TaskBar, TaskStatus
 
 MAX_QUEUE_SIZE = 6
 CONSOLE_MARGIN = 4
+
+asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 
 # XXX:
@@ -88,7 +91,7 @@ async def producer(q):
     # * config file location (unless given an absolute path will look here)
     #
     config = 'dotplug.json'
-    with resources.open_text('data', f'{config}') as f:
+    with resources.open_text('dotplug.data', f'{config}') as f:
         data = json.loads(f.read())
         for idx, each in enumerate(data):
             task = mktask(each)
