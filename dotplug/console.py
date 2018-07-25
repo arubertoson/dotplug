@@ -130,7 +130,7 @@ class BaseBar:
 
     @refresh_bar
     def write(self, msg, x=0, color=ColorPair.WHITE):
-        self._bar.addstr(0, x, msg, curses.color_pair(color))
+        self._bar.addstr(0, x, msg[:self._x - 1], curses.color_pair(color))
 
     def clear(self):
         self._bar.erase()
