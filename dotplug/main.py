@@ -9,8 +9,6 @@ import shutil
 import asyncio
 from importlib import resources
 
-import uvloop
-
 from dotplug.tasks import mktask
 # XXX: Utils
 from dotplug.archive import ensure_archive
@@ -18,8 +16,6 @@ from dotplug.console import run, TaskBar, TaskStatus
 
 MAX_QUEUE_SIZE = 6
 CONSOLE_MARGIN = 4
-
-asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 
 # XXX:
