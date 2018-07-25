@@ -101,6 +101,17 @@
       "src": "{.dest}/bin",
       "targets": ["ctags"]
     }
+  },
+  {
+    "name": "direnv",
+    "version": "2.17.0",
+    "repo": "https://github.com/direnv/direnv/releases/download/v{version}/direnv.linux-amd64",
+    "type": "appimage",
+    "build": "appimage",
+    "link": {
+      "src": "{.dest}",
+      "targets": ["direnv"]
+    }
   }
 ]
  
