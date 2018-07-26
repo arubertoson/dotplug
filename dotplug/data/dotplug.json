@@ -13,8 +13,8 @@
   {
     "name": "go",
     "version": "1.10.3",
-    "repo": "https://dl.google.com/go/go{version}.linux-amd64.{type}",
-    "type": "tar.gz",
+    "repo": "https://dl.google.com/go/go{version}.linux-amd64.tar.gz",
+    "type": "tar",
     "build": "binary",
     "link": {
       "src": "{.dest}/bin",
@@ -38,8 +38,8 @@
   {
     "name": "git",
     "version": "2.18.0",
-    "repo": "https://github.com/git/git/archive/v{version}.{type}",
-    "type": "tar.gz",
+    "repo": "https://github.com/git/git/archive/v{version}.tar.gz",
+    "type": "tar",
     "build": "source",
     "cmds": [
       "make configure && ./configure --prefix={.dest} && make && make install"
@@ -52,8 +52,8 @@
   {
     "name": "nodejs",
     "version": "8.11.3",
-    "repo": "https://nodejs.org/dist/v{version}/node-v{version}-linux-x64.{type}",
-    "type": "tar.xz",
+    "repo": "https://nodejs.org/dist/v{version}/node-v{version}-linux-x64.tar.xz",
+    "type": "tar",
     "build": "binary",
     "link": {
       "src": "{.dest}/bin",
@@ -64,8 +64,8 @@
     "name": "yarn",
     "depend": ["nodejs"],
     "version": "1.7.0",
-    "repo": "https://yarnpkg.com/downloads/{version}/yarn-v{version}.{type}",
-    "type": "tar.gz",
+    "repo": "https://yarnpkg.com/downloads/{version}/yarn-v{version}.tar.gz",
+    "type": "tar",
     "build": "binary",
     "link": {
       "src": "{.dest}/bin",
@@ -75,8 +75,8 @@
   {
     "name": "fzf",
     "version": "0.17.4",
-    "repo": "https://github.com/junegunn/fzf/archive/{version}.{type}",
-    "type": "tar.gz",
+    "repo": "https://github.com/junegunn/fzf/archive/{version}.tar.gz",
+    "type": "tar",
     "build": "binary",
     "cmds": [
       "./install --bin --64"
@@ -112,7 +112,64 @@
       "src": "{.dest}",
       "targets": ["direnv"]
     }
+  },
+  {
+    "name": "cmake",
+    "version": "3.12.0",
+    "repo": "https://cmake.org/files/v3.12/cmake-{version}-Linux-x86_64.tar.gz",
+    "type": "tar",
+    "build": "binary",
+    "link": {
+      "src": "{.dest}/bin",
+      "targets": ["cmake", "ctest"]
+    }
+  },
+  {
+    "name": "kitty",
+    "depend": ["patchelf"],
+    "version": "0.11.3",
+    "repo": "https://github.com/kovidgoyal/kitty/releases/download/v{version}/kitty-{version}-x86_64.txz",
+    "type": "tar",
+    "build": "binary",
+    "cmds": [
+      "patchelf --set-rpath '$ORIGIN/../lib' {.dest}/lib/libharfbuzz.so.0",
+      "ln -s $_BASE_OPT/extras/libs/libfreetype.so.2.9 {.dest}/lib/libfreetype.so.6"
+    ],
+    "link": {
+      "src": "{.dest}/bin",
+      "targets": ["kitty"]
+    }
+  },
+  {
+    "name": "patchelf",
+    "version": "0.9",
+    "repo": "https://github.com/NixOS/patchelf/archive/{version}.tar.gz",
+    "type": "tar",
+    "build": "source",
+    "cmds": [
+      "./bootstrap.sh",
+      "./configure --prefix={.dest}",
+      "make && make install"
+    ],
+    "link": {
+      "src": "{.dest}/bin",
+      "targets": ["patchelf"]
+    }
+  },
+  {
+    "name": "entr",
+    "version": "4.1",
+    "repo": "http://entrproject.org/code/entr-{version}.tar.gz",
+    "type": "tar",
+    "build": "source",
+    "cmds": [
+      "./configure",
+      "make && PREFIX={.dest} make install"
+    ],
+    "link": {
+      "src": "{.dest}/bin",
+      "targets": ["entr"]
+    }
   }
+ 
 ]
- 
- 
