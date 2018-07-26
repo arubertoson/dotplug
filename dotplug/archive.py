@@ -123,8 +123,7 @@ async def ensure_archive(task):
         if not task.type == 'appimage':
             bar.message.write('Validating Archive ... ')
             validator = {
-                'tar.gz': validate_tar,
-                'tar.xz': validate_tar,
+                'tar': validate_tar,
                 'zip': validate_zip,
             }[task.type]
             valid = await bar.loader.wait_for(validator, archive)

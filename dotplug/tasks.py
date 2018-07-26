@@ -143,6 +143,7 @@ class AppCommand(BaseApp):
                 stderr=asyncio.subprocess.DEVNULL,
             )
             stdout, stderr = await proc.communicate()
+
             # XXX:
             # If build fail we need to communicate that
             # if not proc.returncode == 0:
@@ -186,8 +187,7 @@ class AppSource(AppCommand):
         # XXX:
         # Need a better way to handle types
         func = {
-            'tar.gz': untar,
-            'tar.xz': untar,
+            'tar': untar,
             'zip': unzip,
         }[self.type]
 
