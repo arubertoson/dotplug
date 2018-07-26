@@ -59,7 +59,7 @@ async def install(task):
 
             bar.message.write("Installing ...")
             await asyncio.sleep(2)
-            await bar.loader.wait_for(task.install)
+            result = await bar.loader.wait_for(task.install)
 
             bar.message.write("Creating Symlinks ...")
             await asyncio.sleep(2)
