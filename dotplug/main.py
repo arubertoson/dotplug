@@ -33,7 +33,6 @@ async def ensure_dest(task):
         else:
             bar.message.write(f'Already Installed {version}')
             return TaskStatus.ALREADY_INSTALLED
-    os.makedirs(dest)
     return TaskStatus.NOT_INSTALLED
 
 
@@ -56,6 +55,7 @@ async def install(task):
         if not state == TaskStatus.ALREADY_INSTALLED:
             if task.type is not None:
                 await ensure_archive(task)
+                task.message.clear()
 
             bar.message.write("Installing ...")
             await asyncio.sleep(2)
@@ -66,6 +66,7 @@ async def install(task):
             if task.link is not None:
                 result = await bar.loader.wait_for(task.make_links())
 
+            await task.update_current()
             bar.message.clear()
             bar.message.write("Done")
         else:

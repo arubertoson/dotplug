@@ -108,6 +108,17 @@ class BaseApp:
 
             os.symlink(trgt, src)
 
+    async def update_current(self):
+        dest = self.dest
+        if not os.path.exists(dest):
+            return
+
+        current = os.path.join(os.path.dirname(self.dest), 'current')
+        if os.path.islink(current):
+            os.remove(current)
+
+        os.symlink(dest, current, target_is_directory=True)
+
 
 # XXX:
 # Installing needs to have proper exitcodes we can handle, currently if an
@@ -129,20 +140,38 @@ class AppCommand(BaseApp):
     async def command(self):
         clear = self.bar.message.clear
         write = self.bar.message.write
-        for cmd in self.cmds:
-            command = cmd.format(self)
 
-            # XXX:
-            # Really need a better way to handle messages
-            clear()
-            write(command)
+        for cmds in self.cmds:
+            cwd = cmds.get('cwd')
+            if cwd is not None:
+                cwd = os.path.join(os.getcwd(), cwd)
 
-            proc = await asyncio.create_subprocess_shell(
-                command,
-                stdout=asyncio.subprocess.DEVNULL,
-                stderr=asyncio.subprocess.DEVNULL,
-            )
-            stdout, stderr = await proc.communicate()
+            # Update Env
+            env = cmds.get('env')
+            if env is not None:
+                _os_env = os.environ.copy()
+                for k, v in env.items():
+                    v = os.path.expandvars(v)
+                    _os_env[k] = v
+                env = _os_env
+
+            for cmd in cmds.get('cmds', []):
+                command = cmd.format(self)
+
+                # XXX:
+                # Really need a better way to handle messages
+                clear()
+                write(command)
+                await asyncio.sleep(2)
+
+                proc = await asyncio.create_subprocess_shell(
+                    command,
+                    stdout=asyncio.subprocess.DEVNULL,
+                    stderr=asyncio.subprocess.DEVNULL,
+                    env=env,
+                    cwd=cwd,
+                )
+                stdout, stderr = await proc.communicate()
 
             # XXX:
             # If build fail we need to communicate that
