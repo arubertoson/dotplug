@@ -1,5 +1,25 @@
 [
   {
+    "name": "zsh",
+    "version": "5.5.1",
+    "repo": "https://github.com/zsh-users/zsh/archive/zsh-{version}.tar.gz",
+    "type": "tar",
+    "build": "source",
+    "commands": [
+      {
+        "cmds": [
+          "./Util/preconfig",
+          "./configure --prefix={.dest}",
+          "make && make install"
+        ]
+      }
+    ],
+    "link": {
+      "src": "{.dest}",
+      "targets": ["nvim"]
+    }
+  },
+  {
     "name": "nvim",
     "version": "0.3.1",
     "repo": "https://github.com/neovim/neovim/releases/download/v{version}/nvim.{type}",
@@ -27,8 +47,12 @@
     "version": "0.8.0",
     "build": "command",
     "not_dest": true,
-    "cmds": [
-      "go get github.com/motemen/ghq"
+    "commands": [
+      {
+        "cmds": [
+          "go get github.com/motemen/ghq"
+        ]
+      }
     ],
     "link": {
       "src": "{GOBIN}",
@@ -41,8 +65,22 @@
     "repo": "https://github.com/git/git/archive/v{version}.tar.gz",
     "type": "tar",
     "build": "source",
-    "cmds": [
-      "make configure && ./configure --prefix={.dest} && make && make install"
+    "commands": [
+      {
+        "cmds": [
+          "make configure",
+          "./configure --prefix={.dest}",
+          "make && make install"
+        ]
+      },
+      {
+        "cwd": "contrib/credential/gnome-keyring",
+        "requires": ["libgnome-keyring-devel"],
+        "cmds": [
+          "make",
+          "cp git-credential-gnome-keyring {.dest}/libexec/git-core"
+        ]
+      }
     ],
     "link": {
       "src": "{.dest}/bin",
@@ -78,8 +116,12 @@
     "repo": "https://github.com/junegunn/fzf/archive/{version}.tar.gz",
     "type": "tar",
     "build": "binary",
-    "cmds": [
-      "./install --bin --64"
+    "commands": [
+      {
+        "cmds": [
+          "./install --bin --64"
+        ]
+      }
     ],
     "link": {
       "src": "{.dest}/bin",
@@ -92,10 +134,14 @@
     "repo": "https://github.com/universal-ctags/ctags/archive/master.zip",
     "type": "zip",
     "build": "source",
-    "cmds": [
-      "./autogen.sh",
-      "./configure --prefix={.dest}",
-      "make && make install"
+    "commands": [
+      {
+        "cmds": [
+          "./autogen.sh",
+          "./configure --prefix={.dest}",
+          "make && make install"
+        ]
+      }
     ],
     "link": {
       "src": "{.dest}/bin",
@@ -131,9 +177,13 @@
     "repo": "https://github.com/kovidgoyal/kitty/releases/download/v{version}/kitty-{version}-x86_64.txz",
     "type": "tar",
     "build": "binary",
-    "cmds": [
-      "patchelf --set-rpath '$ORIGIN/../lib' {.dest}/lib/libharfbuzz.so.0",
-      "ln -s $_BASE_OPT/extras/libs/libfreetype.so.2.9 {.dest}/lib/libfreetype.so.6"
+    "commands": [
+      {
+        "cmds": [
+          "patchelf --set-rpath '$ORIGIN/../lib' {.dest}/lib/libharfbuzz.so.0",
+          "ln -s $_BASE_OPT/extras/libs/libfreetype.so.2.9 {.dest}/lib/libfreetype.so.6"
+        ]
+      }
     ],
     "link": {
       "src": "{.dest}/bin",
@@ -146,10 +196,14 @@
     "repo": "https://github.com/NixOS/patchelf/archive/{version}.tar.gz",
     "type": "tar",
     "build": "source",
-    "cmds": [
-      "./bootstrap.sh",
-      "./configure --prefix={.dest}",
-      "make && make install"
+    "commands": [
+      {
+        "cmds": [
+          "./bootstrap.sh",
+          "./configure --prefix={.dest}",
+          "make && make install"
+        ]
+      }
     ],
     "link": {
       "src": "{.dest}/bin",
@@ -162,14 +216,47 @@
     "repo": "http://entrproject.org/code/entr-{version}.tar.gz",
     "type": "tar",
     "build": "source",
-    "cmds": [
-      "./configure",
-      "make && PREFIX={.dest} make install"
+    "commands": [
+      {
+        "cmds": [
+          "./configure",
+          "make && PREFIX={.dest} make install"
+        ]
+      }
     ],
     "link": {
       "src": "{.dest}/bin",
       "targets": ["entr"]
     }
+  },
+  {
+    "name": "ag",
+    "version": "2.1.0",
+    "repo": "https://geoff.greer.fm/ag/releases/the_silver_searcher-{version}.tar.gz",
+    "type": "tar",
+    "build": "source",
+    "commands": [
+      {
+        "cmds": [
+          "./configure --prefix={.dest}",
+          "make && make install"
+        ]
+      }
+    ],
+    "link": {
+      "src": "{.dest}/bin",
+      "targets": ["ag"]
+    }
+  },
+  {
+    "name": "rg",
+    "version": "0.8.1",
+    "repo": "https://github.com/BurntSushi/ripgrep/releases/download/{version}/ripgrep-{version}-x86_64-unknown-linux-musl.tar.gz",
+    "type": "tar",
+    "build": "binary",
+    "link": {
+      "src": "{.dest}",
+      "targets": ["rg"]
+    }
   }
- 
 ]
