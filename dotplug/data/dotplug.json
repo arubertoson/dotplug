@@ -1,0 +1,262 @@
+[
+  {
+    "name": "zsh",
+    "version": "5.5.1",
+    "repo": "https://github.com/zsh-users/zsh/archive/zsh-{version}.tar.gz",
+    "type": "tar",
+    "build": "source",
+    "commands": [
+      {
+        "cmds": [
+          "./Util/preconfig",
+          "./configure --prefix={.dest}",
+          "make && make install"
+        ]
+      }
+    ],
+    "link": {
+      "src": "{.dest}",
+      "targets": ["nvim"]
+    }
+  },
+  {
+    "name": "nvim",
+    "version": "0.3.1",
+    "repo": "https://github.com/neovim/neovim/releases/download/v{version}/nvim.{type}",
+    "type": "appimage",
+    "build": "appimage",
+    "link": {
+      "src": "{.dest}",
+      "targets": ["nvim"]
+    }
+  },
+  {
+    "name": "go",
+    "version": "1.10.3",
+    "repo": "https://dl.google.com/go/go{version}.linux-amd64.tar.gz",
+    "type": "tar",
+    "build": "binary",
+    "link": {
+      "src": "{.dest}/bin",
+      "targets": ["go", "godoc", "gofmt"]
+    }
+  },
+  {
+    "name": "ghq",
+    "depend": ["go"],
+    "version": "0.8.0",
+    "build": "command",
+    "not_dest": true,
+    "commands": [
+      {
+        "cmds": [
+          "go get github.com/motemen/ghq"
+        ]
+      }
+    ],
+    "link": {
+      "src": "{GOBIN}",
+      "targets": ["ghq"]
+    }
+  },
+  {
+    "name": "git",
+    "version": "2.18.0",
+    "repo": "https://github.com/git/git/archive/v{version}.tar.gz",
+    "type": "tar",
+    "build": "source",
+    "commands": [
+      {
+        "cmds": [
+          "make configure",
+          "./configure --prefix={.dest}",
+          "make && make install"
+        ]
+      },
+      {
+        "cwd": "contrib/credential/gnome-keyring",
+        "requires": ["libgnome-keyring-devel"],
+        "cmds": [
+          "make",
+          "cp git-credential-gnome-keyring {.dest}/libexec/git-core"
+        ]
+      }
+    ],
+    "link": {
+      "src": "{.dest}/bin",
+      "targets": ["git"]
+    }
+  },
+  {
+    "name": "nodejs",
+    "version": "8.11.3",
+    "repo": "https://nodejs.org/dist/v{version}/node-v{version}-linux-x64.tar.xz",
+    "type": "tar",
+    "build": "binary",
+    "link": {
+      "src": "{.dest}/bin",
+      "targets": ["node"]
+    }
+  },
+  {
+    "name": "yarn",
+    "depend": ["nodejs"],
+    "version": "1.7.0",
+    "repo": "https://yarnpkg.com/downloads/{version}/yarn-v{version}.tar.gz",
+    "type": "tar",
+    "build": "binary",
+    "link": {
+      "src": "{.dest}/bin",
+      "targets": ["yarn"]
+    }
+  },
+  {
+    "name": "fzf",
+    "version": "0.17.4",
+    "repo": "https://github.com/junegunn/fzf/archive/{version}.tar.gz",
+    "type": "tar",
+    "build": "binary",
+    "commands": [
+      {
+        "cmds": [
+          "./install --bin --64"
+        ]
+      }
+    ],
+    "link": {
+      "src": "{.dest}/bin",
+      "targets": ["fzf"]
+    }
+  },
+  {
+    "name": "ctags",
+    "version": "0.1.0",
+    "repo": "https://github.com/universal-ctags/ctags/archive/master.zip",
+    "type": "zip",
+    "build": "source",
+    "commands": [
+      {
+        "cmds": [
+          "./autogen.sh",
+          "./configure --prefix={.dest}",
+          "make && make install"
+        ]
+      }
+    ],
+    "link": {
+      "src": "{.dest}/bin",
+      "targets": ["ctags"]
+    }
+  },
+  {
+    "name": "direnv",
+    "version": "2.17.0",
+    "repo": "https://github.com/direnv/direnv/releases/download/v{version}/direnv.linux-amd64",
+    "type": "appimage",
+    "build": "appimage",
+    "link": {
+      "src": "{.dest}",
+      "targets": ["direnv"]
+    }
+  },
+  {
+    "name": "cmake",
+    "version": "3.12.0",
+    "repo": "https://cmake.org/files/v3.12/cmake-{version}-Linux-x86_64.tar.gz",
+    "type": "tar",
+    "build": "binary",
+    "link": {
+      "src": "{.dest}/bin",
+      "targets": ["cmake", "ctest"]
+    }
+  },
+  {
+    "name": "kitty",
+    "depend": ["patchelf"],
+    "version": "0.11.3",
+    "repo": "https://github.com/kovidgoyal/kitty/releases/download/v{version}/kitty-{version}-x86_64.txz",
+    "type": "tar",
+    "build": "binary",
+    "commands": [
+      {
+        "cmds": [
+          "patchelf --set-rpath '$ORIGIN/../lib' {.dest}/lib/libharfbuzz.so.0",
+          "ln -s $_BASE_OPT/extras/libs/libfreetype.so.2.9 {.dest}/lib/libfreetype.so.6"
+        ]
+      }
+    ],
+    "link": {
+      "src": "{.dest}/bin",
+      "targets": ["kitty"]
+    }
+  },
+  {
+    "name": "patchelf",
+    "version": "0.9",
+    "repo": "https://github.com/NixOS/patchelf/archive/{version}.tar.gz",
+    "type": "tar",
+    "build": "source",
+    "commands": [
+      {
+        "cmds": [
+          "./bootstrap.sh",
+          "./configure --prefix={.dest}",
+          "make && make install"
+        ]
+      }
+    ],
+    "link": {
+      "src": "{.dest}/bin",
+      "targets": ["patchelf"]
+    }
+  },
+  {
+    "name": "entr",
+    "version": "4.1",
+    "repo": "http://entrproject.org/code/entr-{version}.tar.gz",
+    "type": "tar",
+    "build": "source",
+    "commands": [
+      {
+        "cmds": [
+          "./configure",
+          "make && PREFIX={.dest} make install"
+        ]
+      }
+    ],
+    "link": {
+      "src": "{.dest}/bin",
+      "targets": ["entr"]
+    }
+  },
+  {
+    "name": "ag",
+    "version": "2.1.0",
+    "repo": "https://geoff.greer.fm/ag/releases/the_silver_searcher-{version}.tar.gz",
+    "type": "tar",
+    "build": "source",
+    "commands": [
+      {
+        "cmds": [
+          "./configure --prefix={.dest}",
+          "make && make install"
+        ]
+      }
+    ],
+    "link": {
+      "src": "{.dest}/bin",
+      "targets": ["ag"]
+    }
+  },
+  {
+    "name": "rg",
+    "version": "0.8.1",
+    "repo": "https://github.com/BurntSushi/ripgrep/releases/download/{version}/ripgrep-{version}-x86_64-unknown-linux-musl.tar.gz",
+    "type": "tar",
+    "build": "binary",
+    "link": {
+      "src": "{.dest}",
+      "targets": ["rg"]
+    }
+  }
+]
